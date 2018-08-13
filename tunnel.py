@@ -55,11 +55,19 @@ class Server(Tunnel):
         try:
             packet = icmp.ICMPPacket.parse(packet)
         except ValueError:
+            print "Malformated packet"
             return
         self.source = addr[0]
         self.dest = packet.dest
-        if packet.type == icmp.ICMP_ECHO and packet.code == 1:
+        if packet.type == icmp.ICMP_ECHO and packet.code == 0:
+            # our packet, do nothing
             pass
+        elif packet.type == icmp.ICMP_ECHO_REQUEST and packet.code == 1:
+            # control
+            print "closing tocket"
+            self.sockets.remove(self.tcp_socket)
+            self.tcp_socket.close()
+            self.tcp_socket = None
         else:
             if not self.tcp_socket:
                 self.tcp_socket = self.create_tcp_socket(self.dest)
@@ -68,11 +76,7 @@ class Server(Tunnel):
 
     def tcp_data_handler(self, sock):
         sdata = sock.recv(TCP_BUFFER_SIZE)
-        if len(sdata) == 0:
-            # fix this
-            #self.sockets.remove(sock)
-            return
-        new_packet = icmp.ICMPPacket(icmp.ICMP_ECHO, 1, 0, 0, 0,
+        new_packet = icmp.ICMPPacket(icmp.ICMP_ECHO, 0, 0, 0, 0,
                                      sdata, self.source, self.dest)
         packet = new_packet.create()
         self.icmp_socket.sendto(packet, (self.source, 0))
@@ -100,13 +104,18 @@ class ProxyClient(Tunnel, threading.Thread):
 
     def tcp_data_handler(self, sock):
         sdata = sock.recv(TCP_BUFFER_SIZE)
-        if len(sdata) == 0:
-            exit() # exit thread
+        # if no data the socket may be closed/timeout/EOF
+        len_sdata = len(sdata)
+        code = 0 if len_sdata > 0 else 1
         new_packet = icmp.ICMPPacket(
-            icmp.ICMP_ECHO_REQUEST, 0, 0, 0, 0,
+            icmp.ICMP_ECHO_REQUEST, code, 0, 0, 0,
             sdata, self.tcp_socket.getsockname(), self.dest)
         packet = new_packet.create()
         self.icmp_socket.sendto(packet, (self.proxy, 1))
+        if code == 1:
+            print repr(new_packet)
+            print "Exiting thread"
+            exit() #exit thread
 
 
 class Proxy(ProxyClient):

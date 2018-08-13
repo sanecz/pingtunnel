@@ -14,7 +14,7 @@ class ICMPPacket(object):
         self.length = len(self.data)
 
     def __repr__(self):
-        return "<ICMPv{s.version} packet: type = {s.type}, code = {s.code}, " \
+        return "<ICMP packet: type = {s.type}, code = {s.code}, " \
             "data length = {length}".format(s=self, length=len(self.data))
 
     def __str__(self):
@@ -39,19 +39,22 @@ class ICMPPacket(object):
     def parse(cls, packet):
         ip_pack_str = "BBHHHBBH4s4s"
         icmp_pack_str = "!BBHHH4sH"
+        data = ""
 
         ip_packet, icmp_packet = packet[:20], packet[20:] # split ip header
 
         ip_packet = struct.unpack(ip_pack_str, ip_packet)
 
         source_ip = ip_packet[8]
+        icmp_pack_len = struct.calcsize(icmp_pack_str)
+        packet_len = len(icmp_packet) - icmp_pack_len
 
-        packet_len = len(icmp_packet) - struct.calcsize(icmp_pack_str)
         if packet_len > 0:
-            icmp_pack_str += "{}s".format(packet_len)
+            icmp_data_str = "{}s".format(packet_len)
+            data = struct.unpack(icmp_data_str, icmp_packet[icmp_pack_len:])[0]
 
         type, code, checksum, id, sequence, dest_ip, \
-            dest_port, data = struct.unpack(icmp_pack_str, icmp_packet)
+            dest_port = struct.unpack(icmp_pack_str, icmp_packet[:icmp_pack_len])
 
         return cls(type, code, checksum, id, sequence, data,
                    socket.inet_ntoa(source_ip),

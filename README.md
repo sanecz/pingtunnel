@@ -28,8 +28,6 @@
 
 
 ## Known bugs/issues/TODOs
-
-   - Opening a 2nd TCP connection on the server-side will result of an issue with the recv() returning 0 data
    - Bad thread management
    - Bad socket cleaning
    - Doc
