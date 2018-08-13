@@ -64,7 +64,6 @@ class Server(Tunnel):
             pass
         elif packet.type == icmp.ICMP_ECHO_REQUEST and packet.code == 1:
             # control
-            print "closing tocket"
             self.sockets.remove(self.tcp_socket)
             self.tcp_socket.close()
             self.tcp_socket = None
@@ -113,8 +112,6 @@ class ProxyClient(Tunnel, threading.Thread):
         packet = new_packet.create()
         self.icmp_socket.sendto(packet, (self.proxy, 1))
         if code == 1:
-            print repr(new_packet)
-            print "Exiting thread"
             exit() #exit thread
 
 
